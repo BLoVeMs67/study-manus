@@ -29,7 +29,7 @@ class StatusService:
                 processed_results.append(HealthStatus(
                     service="未知服务",
                     status="error",
-                    details=f"未知检查器发生错误：{str(e)}"
+                    details=f"未知检查器发生错误：{str(Exception)}"
                 ))
             else:
                 processed_results.append(res)
