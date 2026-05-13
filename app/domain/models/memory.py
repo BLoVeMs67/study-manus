@@ -19,7 +19,7 @@ class Memory(BaseModel):
         """往记忆中添加一条消息"""
         self.messages.append(message)
 
-    def add_messsages(self, messages: List[Dict[str, Any]]) -> None:
+    def add_messages(self, messages: List[Dict[str, Any]]) -> None:
         """往记忆中添加多条消息"""
         self.messages.extend(messages)
 
