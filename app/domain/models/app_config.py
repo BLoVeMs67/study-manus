@@ -1,4 +1,7 @@
-from pydantic import BaseModel, ConfigDict, HttpUrl, Field
+from enum import Enum
+from typing import Dict, Any, Optional, List
+
+from pydantic import BaseModel, ConfigDict, HttpUrl, Field, model_validator
 
 
 class LLMConfig(BaseModel):
@@ -15,6 +18,55 @@ class AgentConfig(BaseModel):
     max_iterations: int = Field(default=100, gt=0, lt=1000)  # 最大迭代次数
     max_retries: int = Field(default=3, gt=1, lt=10)  # LLM/工具最大重试次数
     max_search_results: int = Field(default=10, gt=1, lt=30)  # 最大搜索结果数
+
+
+class MCPTransport(str, Enum):
+    """MCP传输类型枚举"""
+    STDIO = "stdio"  # 本地输入输出
+    SSE = "sse"  # 流式事件传输
+    STREAMABLE_HTTP = "streamable_http"  # 可流式HTTP
+
+
+class MCPServerConfig(BaseModel):
+    """MCP单条服务配置"""
+    # 通用字段配置
+    transport: MCPTransport = MCPTransport.STREAMABLE_HTTP  # 传输协议
+    enabled: bool = True  # 是否开启
+    description: Optional[str] = None  # MCP服务的描述
+    env: Optional[Dict[str, Any]] = None  # 环境变量
+
+    # stdio配置
+    command: Optional[str] = None  # 启动命令
+    args: Optional[List[str]] = None  # 命令参数
+
+    # streammable_http与sse配置
+    url: Optional[str] = None  # MCP服务的URL地址
+    headers: Optional[Dict[str, Any]] = None  # headers请求头
+
+    model_config = ConfigDict(extra="allow")
+
+    @model_validator(mode="after")
+    def validate_mcp_server_config(self):
+        """校验mcp_server_config的相关信息，包含url+command"""
+        # 1.判断transport是否为sse/streamable_http
+        if self.transport in [MCPTransport.SSE, MCPTransport.STREAMABLE_HTTP]:
+            # 2.判断url是否传递
+            if not self.url:
+                raise ValueError("在sse或streamable_http传输协议中必须传递url")
+
+        # 3.判断stdio
+        if self.transport == MCPTransport.STDIO:
+            # 4.判断command
+            if not self.command:
+                raise ValueError("在stdio模式中必须传递command")
+        return self
+
+
+class MCPConfig(BaseModel):
+    """应用MCP配置"""
+    mcpServers: Dict[str, MCPServerConfig] = Field(default_factory=dict)  # MCP服务
+
+    model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
 
 
 class AppConfig(BaseModel):
