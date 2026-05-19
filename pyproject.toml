@@ -7,9 +7,11 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic>=1.18.4",
     "asyncpg>=0.31.0",
+    "beautifulsoup4>=4.14.3",
     "cos-python-sdk-v5>=1.9.42",
     "fastapi>=0.136.1",
     "filelock>=3.29.0",
+    "httpx>=0.28.1",
     "json-repair>=0.59.9",
     "openai>=2.32.0",
     "psycopg2-binary>=2.9.12",
