@@ -13,6 +13,7 @@ dependencies = [
     "filelock>=3.29.0",
     "httpx>=0.28.1",
     "json-repair>=0.59.9",
+    "mcp>=1.27.1",
     "openai>=2.32.0",
     "psycopg2-binary>=2.9.12",
     "pydantic>=2.13.3",
