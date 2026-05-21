@@ -45,7 +45,7 @@ class Browser(Protocol):
         """传递按键标识Enter/CTRL+C等实现浏览器模拟按键"""
         ...
 
-    async def select_option(self, index: int, option: str) -> ToolResult:
+    async def select_option(self, index: int, option: int) -> ToolResult:
         """传递索引+选项序号标识在下拉菜单中选择指定的选项"""
         ...
 
