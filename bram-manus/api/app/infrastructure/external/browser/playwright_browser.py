@@ -29,6 +29,37 @@ class PlaywrightBrowser(BrowserProtocol):
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
 
+    async def _ensure_browser(self) -> None:
+        """确保浏览器存在，如果不存在则初始化"""
+        if not self.browser or not self.page:
+            if not await self.initialize():
+                raise Exception("初始化Playwright浏览器失败")
+
+    async def _ensure_page(self) -> None:
+        """确保浏览器页面存在，如果不存在新建"""
+        # 1.先确保浏览器存在
+        await self._ensure_browser()
+
+        # 2.如果页面不存在则创建新上下文+页面
+        if not self.page:
+            self.page = await self.browser.new_page() # 等同于self.browser.new_context().new_page()
+        else:
+            # 3.如果页面存在则提取所有上下文
+            contexts = self.browser.contexts
+            if contexts:
+                # 4.获取默认上下文及页面
+                default_context = contexts[0]
+                pages = default_context.pages
+
+                # 5.判断页面是否存在
+                if pages:
+                    # 6.获取当前最新页面
+                    lastest_page = pages[-1]
+
+                    # 7.判断是否为最新页面
+                    if self.page != lastest_page:
+                        self.page = lastest_page
+
     async def initialize(self) -> bool:
         """初始化并确保资源是可用的"""
         # 1.对应重试次数+重试延迟确保资源存在
@@ -53,7 +84,7 @@ class PlaywrightBrowser(BrowserProtocol):
                     # 7.判断当前页面是不是空页面，如果是则直接使用page，否则新建一个
                     if (
                         page.url == "about:blank" or
-                        page.url == "chrome://neetab/" or
+                        page.url == "chrome://newtab/" or
                         page.url == "chrome://new-tab-page/" or
                         not page.url
                     ):
@@ -79,7 +110,6 @@ class PlaywrightBrowser(BrowserProtocol):
                 retry_interval = min(retry_interval * 2, 10)
                 logger.warning(f"初始化Playwright浏览器失败，即将进行第{attempt+1}次重试：{str(e)}")
                 await asyncio.sleep(retry_interval)
-
 
     async def cleanup(self) -> None:
         """清除Playwright资源，包含浏览器+页面+Playwright"""
@@ -116,3 +146,24 @@ class PlaywrightBrowser(BrowserProtocol):
             self.page = None
             self.playwright = None
             self.browser = None
+
+    async def wait_for_page_load(self, timeout: int = 15) -> bool:
+        """传递超时时间，等待当前页面是否加载完毕"""
+        # 1.确保当前页面存在
+        await self._ensure_page()
+
+        # 2.使用异步任务事件循环中的时间来作为开始时间（只和异步任务相关）
+        start_time = asyncio.get_event_loop().time()
+        check_interval = 5
+
+        # 3.循环检测网页是否加载成功
+        while asyncio.get_event_loop().time() - start_time < timeout:
+            # 4.使用js代码判断网页是否加载成功
+            is_completed = await self.page.evaluate("""() => document.readyState === 'complete'""")
+            if is_completed:
+                return True
+
+            # 5.未加载成功，休眠
+            await asyncio.sleep(check_interval)
+
+        return False
