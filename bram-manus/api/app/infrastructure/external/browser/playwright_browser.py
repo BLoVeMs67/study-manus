@@ -2,11 +2,12 @@ import asyncio
 import logging
 from typing import Optional
 
-from openai import max_retries
+from markdownify import markdownify
 from playwright.async_api import async_playwright
 from playwright.sync_api import Playwright, Browser, Page
 from app.domain.external.browser import Browser as BrowserProtocol
 from app.domain.external.llm import LLM
+from app.infrastructure.external.browser.playwright_browser_fun import GET_VISIBLE_CONTENT_FUNC
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,34 @@ class PlaywrightBrowser(BrowserProtocol):
                     # 7.判断是否为最新页面
                     if self.page != lastest_page:
                         self.page = lastest_page
+
+    async def _extract_content(self) -> str:
+        """提取当前页面内容"""
+        # 1.使用js代码获取当前页面可见元素内容
+        visible_content = await self.page.evaluate(GET_VISIBLE_CONTENT_FUNC)
+
+        # 2.使用markdownify这个库将html文档转换成markdown
+        markdown_content = markdownify(visible_content)
+
+        # 3.模型上下文有限，提取最大不超过50k个字符
+        max_content_length = min(len(markdown_content), 50000)
+
+        # 4.判断是否传递了llm，如果传递了，还可以使用llm对markdown_content进行整理
+        if self.llm:
+            # 5.调用llm
+            response = await self.llm.invoke([
+                {
+                    "role": "system",
+                    "content": "您是一名专业的网页信息提取助手。请从当前页面内容中提取所有信息并将其转换为markdown格式。"
+                },
+                {
+                    "role": "user",
+                    "content": markdown_content[:max_content_length]
+                }
+            ])
+            return response.get("content", "")
+        else:
+            return markdown_content[:max_content_length]
 
     async def initialize(self) -> bool:
         """初始化并确保资源是可用的"""
