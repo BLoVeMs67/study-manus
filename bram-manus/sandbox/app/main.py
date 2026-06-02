@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.interfaces.endpoints.file import router
+from app.interfaces.endpoints.routes import router
 from app.interfaces.errors.exception_handler import register_exception_handlers
 
 
@@ -94,4 +94,5 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # 6.集成路由
+# bug1:之前导入的router是file的router而不是总的router
 app.include_router(router, prefix="/api")
