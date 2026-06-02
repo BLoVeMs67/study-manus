@@ -56,6 +56,7 @@ class Sandbox(Protocol):
             start_line: Optional[int] = None,
             end_line: Optional[int] = None,
             sudo: bool = False,
+            max_length: int = 10000,
     ) -> ToolResult:
         """根据传递的文件路径+起点终点行数+sudo权限读取对应的文件内容"""
         ...
