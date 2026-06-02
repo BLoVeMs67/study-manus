@@ -43,3 +43,26 @@ class ShellExecResult(BaseModel):
     status: str = Field(..., description="命令执行状态")
     returncode: Optional[int] = Field(default=None, description="进程返回代码，只有进程结束时才有值")
     output: Optional[str] = Field(default=None, description="进程执行结果，只有进程结束时才有值")
+
+
+class ShellWriteResult(BaseModel):
+    """Shell命令写入结果模型"""
+    status: str = Field(..., description="写入状态")
+
+
+class WriteToProcessRequest(BaseModel):
+    """写入数据到子进程请求结构体"""
+    session_id: str = Field(..., description="Shell会话id")
+    input_text: str = Field(..., description="需要写入的内容文本")
+    press_enter: bool = Field(default=True, description="是否按下回车键")
+
+
+class ShellKillResult(BaseModel):
+    """Shell命令关闭结果"""
+    status: str = Field(..., description="进程的状态")
+    returncode: int = Field(..., description="进程返回状态")
+
+
+class KillProcessRequest(BaseModel):
+    """关闭进程请求结构体"""
+    session_id: str = Field(..., description="Shell会话id")
