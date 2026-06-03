@@ -13,7 +13,7 @@ class ExecCommandRequest(BaseModel):
 class ViewShellRequest(BaseModel):
     """查看Shell执行内容请求结构体"""
     session_id: Optional[str] = Field(default=None, description="目标 Shell 会话的唯一标识符")
-    console: Optional[bool] = Field(default=None, description="是否返回控制台记录列表")
+    console: Optional[bool] = Field(default=True, description="是否返回控制台记录列表")
 
 
 class WaitForProcessRequest(BaseModel):
