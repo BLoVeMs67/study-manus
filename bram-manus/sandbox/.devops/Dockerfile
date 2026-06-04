@@ -8,7 +8,7 @@ ENV UV_LINK_MODE=copy
 # mkdir /var/run/sshd是SSH服务启动必须的目录
 # /var/lib/apt/lists*是apt包索引缓存
 RUN apt-get update && apt-get install -y \
-    ca-certificates git curl openssh-server\
+    ca-certificates git curl openssh-server supervisor\
     && rm -rf /var/lib/apt/lists* \
     && mkdir /var/run/sshd
 
