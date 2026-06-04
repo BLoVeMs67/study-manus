@@ -1,6 +1,8 @@
+# 开发环境
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV HOSTNAME=sandbox
 ENV UV_PROJECT_ENVIRONMENT="/venv"
 ENV UV_LINK_MODE=copy
 
@@ -8,7 +10,7 @@ ENV UV_LINK_MODE=copy
 # mkdir /var/run/sshd是SSH服务启动必须的目录
 # /var/lib/apt/lists*是apt包索引缓存
 RUN apt-get update && apt-get install -y \
-    ca-certificates git curl openssh-server supervisor\
+    ca-certificates git curl openssh-server\
     && rm -rf /var/lib/apt/lists* \
     && mkdir /var/run/sshd
 
@@ -19,7 +21,7 @@ RUN echo 'root:root' | chpasswd && \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # 4.设置工作环境
-WORKDIR /workspace
+WORKDIR /sandbox
 
 # 5.预先配置环境，将基础依赖+Python版本同步到沙箱中并创建环境
 COPY pyproject.toml uv.lock ./
