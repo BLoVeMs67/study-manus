@@ -12,3 +12,4 @@ wheels/
 .env
 config.yaml
 .idea
+demo.*
