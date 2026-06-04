@@ -101,6 +101,7 @@ class BaseAgent(ABC):
                     filtered_message = message
                 # 9.将消息添加到记忆中
                 await self._add_to_memory([filtered_message])
+                return filtered_message
             except Exception as e:
                 # 10.记录日志并睡眠指定时间
                 logger.error(f"调用语言模型发生错误：{str(e)}")

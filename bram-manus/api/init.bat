@@ -1,4 +1,4 @@
 docker desktop start
 docker start manus-postgres
 docker start manus-redis
-uvicorn app.main:app --port 5000
+uvicorn app.main:app --port 8000

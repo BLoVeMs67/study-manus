@@ -29,14 +29,14 @@ class ShellWaitResult(BaseModel):
     returncode: int = Field(..., description="子进程返回代码")
 
 
-class ShellViewResult(BaseModel):
+class ShellReadResult(BaseModel):
     """Shell命令结果模型"""
     session_id: str = Field(..., description="Shell会话id")
     output: str = Field(..., description="Shell会话输出内容")
     console_records: List[ConsoleRecord] = Field(default_factory=list, description="控制台记录")
 
 
-class ShellExecResult(BaseModel):
+class ShellExecuteResult(BaseModel):
     """Shell命令执行结果"""
     session_id: str = Field(..., description="Shell会话id")
     command: str = Field(..., description="执行命令")
@@ -50,19 +50,7 @@ class ShellWriteResult(BaseModel):
     status: str = Field(..., description="写入状态")
 
 
-class WriteToProcessRequest(BaseModel):
-    """写入数据到子进程请求结构体"""
-    session_id: str = Field(..., description="Shell会话id")
-    input_text: str = Field(..., description="需要写入的内容文本")
-    press_enter: bool = Field(default=True, description="是否按下回车键")
-
-
 class ShellKillResult(BaseModel):
     """Shell命令关闭结果"""
     status: str = Field(..., description="进程的状态")
     returncode: int = Field(..., description="进程返回状态")
-
-
-class KillProcessRequest(BaseModel):
-    """关闭进程请求结构体"""
-    session_id: str = Field(..., description="Shell会话id")
