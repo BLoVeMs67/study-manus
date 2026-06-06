@@ -48,7 +48,7 @@ RUN npm config set registry https://registry.npmmirror.com
 # 10.安装Google Chrome浏览器
 RUN add-apt-repository ppa:xtradeb/apps -y && \
     apt-get update && \
-    apt-get install -y chromium --no-install-recomments && \
+    apt-get install -y chromium --no-install-recommends && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
