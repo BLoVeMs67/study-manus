@@ -9,6 +9,7 @@ import http.client
 import logging
 import socket
 import xmlrpc
+import xmlrpc.client
 from typing import Optional, List, Any
 
 from app.interfaces.errors.exceptions import BadRequestException, AppException

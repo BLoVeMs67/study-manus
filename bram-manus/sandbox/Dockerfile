@@ -1,4 +1,16 @@
 # 生产环境
+# 构建
+# docker build -t sandbox-dev .
+# 启动
+# docker run -d -p 8080:8080 -p 5900:5900 -p 5901:5901 -p 9222:9222 --name sandbox-dev sandbox-dev
+
+# docker rm sandbox-dev
+
+# docker logs sandbox-dev
+
+# docker ps
+
+# docker stop sandbox-dev
 # 1.使用ubuntu基础镜像来源
 FROM ubuntu:22.04
 
@@ -25,8 +37,8 @@ RUN useradd -m -d /home/ubuntu -s /bin/bash ubuntu && \
 # 6.安装Python 3.12版本(非uv)
 RUN add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && \
-    apt-get install -y python3.12 python3.12-venv python3.12-dev python3-pip && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
+    apt-get install -y python3.10 python3.10-venv python3.10-dev python3-pip && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -85,7 +97,8 @@ COPY supervisord.conf /etc/supervisor/conf.d/sandbox.conf
 EXPOSE 8080 9222 5900 5901
 
 # 18.额外的环境变量配置
-ENV ENV_CHROME_ARGS=""
+ENV CHROME_ARGS=""
+ENV UVI_ARGS=""
 
 # 19.使用supervisor管理所有进程
 CMD ["supervisord", "-n", "-c", "/sandbox/supervisord.conf"]
