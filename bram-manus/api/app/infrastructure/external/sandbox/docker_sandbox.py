@@ -10,7 +10,9 @@ import httpx
 from docker.models.resource import Model
 from watchfiles import awatch
 
+from app.domain.external.browser import Browser
 from app.domain.external.sandbox import Sandbox
+from app.infrastructure.external.browser.playwright_browser import PlaywrightBrowser
 from core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -96,7 +98,7 @@ class DockerSandbox(Sandbox):
 
         try:
             # 创建docker客户端
-            client = docker.from_env()
+            docker_client = docker.from_env()
 
             container_config = {
                 "image": image,
@@ -117,7 +119,7 @@ class DockerSandbox(Sandbox):
                 container_config["network"] = settings.sandbox_network
 
             # 调用docker客户端运行
-            container = client.containers.run(**container_config)
+            container = docker_client.containers.run(**container_config)
 
             # 重载并刷新容器信息
             container.reload()
@@ -139,3 +141,38 @@ class DockerSandbox(Sandbox):
             return DockerSandbox(ip=ip)
 
         return await asyncio.to_thread(cls._create_task)
+
+    async def destory(self) -> bool:
+        """销毁当前DockerSandbox实例"""
+        try:
+            if self.client:
+                await self.client.aclose()
+            if self._container_name:
+                docker_client = docker.from_env()
+                docker_client.containers.get(self._container_name).remove(force=True)
+            return True
+        except Exception as e:
+            logger.error(f"销毁当前DockerSandbox[{self._container_name}]失败：{str(e)}")
+            return False
+
+    @classmethod
+    @alru_cache(maxsize=128, typed=True)
+    async def get(cls, id: str) -> Self:
+        """根据传递的id获取沙箱实例"""
+        # 远程
+        settings = get_settings()
+        if settings.sandbox_address:
+            ip = cls._resolve_hostname_to_ip(settings.sandbox_address)
+            return DockerSandbox(ip=ip, container_name=id)
+
+        # 本地
+        docker_client = docker.from_env()
+        container = docker_client.containers.get(id)
+        container.reload()
+
+        ip = cls._get_container_ip(container)
+        return DockerSandbox(ip=ip, container_name=id)
+
+    async def get_browser(self) -> Browser:
+        """获取沙箱中的浏览器实例"""
+        return PlaywrightBrowser(self.cdp_url)
