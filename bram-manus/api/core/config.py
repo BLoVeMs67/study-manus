@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from typing import Optional
 
 class Settings(BaseSettings):
     """BramManus后端中控配置信息，从.env或者环境变量中加载数据"""
@@ -27,6 +28,17 @@ class Settings(BaseSettings):
     cos_scheme: str = "https"
     cos_bucket: str = ""
     cos_domain: str = ""
+
+    # Sandbox配置
+    sandbox_address: Optional[str] = None
+    sandbox_image: Optional[str] = None
+    sandbox_name_prefix: Optional[str] = None
+    sandbox_ttl_minutes: Optional[int] = 60
+    sandbox_network: Optional[str] = None
+    sandbox_chrome_args: Optional[str] = ""
+    sandbox_https_proxy: Optional[str] = None # 代理
+    sandbox_http_proxy: Optional[str] = None
+    sandbox_no_proxy: Optional[str] = None
 
     # 使用pydantic v2 的写法完成环境变量信息的告知
     model_config = SettingsConfigDict(
