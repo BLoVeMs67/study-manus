@@ -425,4 +425,3 @@ class DockerSandbox(Sandbox):
             }
         )
         return ToolResult.from_sandbox(**response.json())
-    
