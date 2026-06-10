@@ -2,7 +2,7 @@
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from openai import AsyncOpenAI
-from a2a.types import Message
+from a2a.types import Message, Part, Role
 
 class DeepSeekAgent:
     @classmethod
@@ -29,7 +29,13 @@ class DeepSeekAgentExecutor(AgentExecutor):
         # query = context.message.parts[0].root.text
         query = context.get_user_input()
         answer = await self.agent.invoke(query)
-        await event_queue.enqueue_event(Message(answer))
+        #await event_queue.enqueue_event(Message(answer))
+        await event_queue.enqueue_event(
+            Message(
+                role=Role.ROLE_AGENT,
+                parts=[Part(text=answer)]
+            )
+        )
 
     async def cancel(
         self, context: RequestContext, event_queue: EventQueue
