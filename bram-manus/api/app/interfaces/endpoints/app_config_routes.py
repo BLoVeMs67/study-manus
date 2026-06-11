@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Body
 
 from app.application.services.app_config_service import AppConfigService
 from app.domain.models.app_config import LLMConfig, AgentConfig, MCPConfig
-from app.interfaces.schemas.app_config import ListMCPServerResponse
+from app.interfaces.schemas.app_config import ListMCPServerResponse, ListA2AServerResponse
 from app.interfaces.schemas.base import Response
 from app.interfaces.service_dependencies import get_app_config_service
 
@@ -132,37 +132,42 @@ async def delete_mcp_server(
 )
 async def set_mcp_server_enabled(
         server_name: str,
-        enabled: bool = Body(...),
+        enabled: bool = Body(..., embed=True),
         app_config_service: AppConfigService = Depends(get_app_config_service)
 ) -> Response[Optional[Dict]]:
     """根据传递的server_name+enabled更新指定的MCP服务的启用状态"""
     await app_config_service.set_mcp_server_enabled(server_name, enabled)
     return Response.success(msg="更新MCP服务的enabled成功")
 
-@router.post(
+@router.get(
     path="/a2a-servers",
-    response_model=Response,
+    response_model=Response[ListA2AServerResponse],
     summary="获取a2a服务器列表",
     description="获取BramManus项目中所有已配置的a2a服务列表"
 )
 async def get_a2a_servers(
         app_config_service: AppConfigService = Depends(get_app_config_service)
-) -> Response:
+) -> Response[ListA2AServerResponse]:
     """获取a2a服务器列表"""
-    pass
+    a2a_services = await app_config_service.get_a2a_servers()
+    return Response.success(
+        msg="获取a2a服务列表成功",
+        data=ListA2AServerResponse(a2a_servers=a2a_services)
+    )
 
 @router.post(
     path="/a2a-servers",
-    response_model=Response,
+    response_model=Response[Optional[Dict]],
     summary="新增a2a服务器",
     description="为BramManus项目新增a2a服务器"
 )
 async def create_a2a_server(
-        base_url: str = Body(...),
+        base_url: str = Body(..., embed=True),
         app_config_service: AppConfigService = Depends(get_app_config_service)
-) -> Response:
+) -> Response[Optional[Dict]]:
     """新增a2a服务器"""
-    pass
+    await app_config_service.create_a2a_server(base_url)
+    return Response.success(msg="新增A2A服务配置成功")
 
 @router.post(
     path="/a2a-servers/{a2a_id}/delete",

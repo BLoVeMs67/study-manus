@@ -1,10 +1,12 @@
+import uuid
 from typing import List
 
 from app.application.errors.exceptions import NotFoundError
-from app.domain.models.app_config import AppConfig, LLMConfig, AgentConfig, MCPConfig
+from app.domain.models.app_config import AppConfig, LLMConfig, AgentConfig, MCPConfig, A2AConfig, A2AServerConfig
 from app.domain.repositories.app_config_repository import AppConfigRepository
+from app.domain.services.tools.a2a import A2AClientManager
 from app.domain.services.tools.mcp import MCPClientManager
-from app.interfaces.schemas.app_config import ListMCPServerItem
+from app.interfaces.schemas.app_config import ListMCPServerItem, ListA2AServerItem
 
 
 class AppConfigService:
@@ -122,3 +124,45 @@ class AppConfigService:
         app_config.mcp_config.mcpServers[server_name].enabled = enabled
         self.app_config_repository.save(app_config)
         return app_config.mcp_config
+
+    async def create_a2a_server(self, base_url: str) -> A2AConfig:
+        """根据传递的配置新增a2a服务器"""
+        app_config = await self._load_app_config()
+
+        a2a_server_config = A2AServerConfig(
+            id=str(uuid.uuid4()),
+            base_url=base_url,
+            enabled=True
+        )
+        app_config.a2a_config.a2a_servers.append(a2a_server_config)
+
+        self.app_config_repository.save(app_config)
+        return app_config.a2a_config
+
+    async def get_a2a_servers(self) -> List[ListA2AServerItem]:
+        """获取a2a服务列表"""
+        app_config = await self._load_app_config()
+
+        a2a_servers = []
+        a2a_client_manager = A2AClientManager(a2a_config=app_config.a2a_config)
+
+        try:
+            await a2a_client_manager.initialize()
+
+            agent_cards = a2a_client_manager.agent_cards
+
+            for id, agent_card in agent_cards.items():
+                a2a_servers.append(ListA2AServerItem(
+                    id=id,
+                    name=agent_card.get("name", ""),
+                    description=agent_card.get("description", ""),
+                    input_modes=agent_card.get("defaultInputModes", []),
+                    output_modes=agent_card.get("defaultOutputModes", []),
+                    streaming=agent_card.get("capabilities", {}).get("streaming", False),
+                    push_notifications=agent_card.get("capabilities", {}).get("push_notifications", False),
+                    enabled=agent_card.get("enabled", False)
+                ))
+        finally:
+            await a2a_client_manager.cleanup()
+
+        return a2a_servers

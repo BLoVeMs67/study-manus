@@ -73,6 +73,7 @@ class A2AClientManager:
                 agent_card_response.raise_for_status()
                 agent_card = agent_card_response.json()
 
+                agent_card["enabled"] = a2a_server_config.enabled
                 self._agent_cards[a2a_server_config.id] = agent_card
             except Exception as e:
                 logger.warning(f"加载A2A服务[{a2a_server_config.id}]失败：{str(e)}")
