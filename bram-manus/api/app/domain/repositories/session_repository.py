@@ -27,7 +27,7 @@ class SessionRepository(Protocol):
         ...
 
     async def update_title(self, session_id: str, title: str) -> None:
-        """根据传递的会话id删除会话"""
+        """根据传递的会话id+标题更新会话信息"""
         ...
 
     async def update_latest_message(self, session_id: str, message: str, timestamp: datetime) -> None:
