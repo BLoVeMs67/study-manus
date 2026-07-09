@@ -4,7 +4,7 @@ from .base import BaseTool, tool
 from app.domain.models.tool_result import ToolResult
 
 
-class Message(BaseTool):
+class MessageTool(BaseTool):
     """消息工具，用于完成消息工具初始化"""
     name: str = "message"
 
