@@ -81,6 +81,7 @@ class PlannerReactFlow(BaseFlow):
         logger.debug(f"创建执行Agent成功，会话id:{self._session_id}")
 
 
+    # 这个函数重要的很
     async def invoke(self, message: Message) -> AsyncGenerator[BaseEvent, None]:
         """传递消息，运行流，在流中调用planner&react智能体组合完成任务并返回对应事件"""
         # 1.调用会话仓库查询会话是否存在
@@ -173,7 +174,30 @@ class PlannerReactFlow(BaseFlow):
 
                 # 22.将状态更新为updating
                 self.status = FlowStatus.UPDATING
+            elif self.status == FlowStatus.UPDATING:
+                # 23.流状态为更新，需要更新计划
+                logger.info(f"Planner&ReAct流开始更新计划")
+                async for event in self.planner.update_plan(self.plan, step):
+                    yield event
 
+                # 24.计划更新完成，需要执行相应子步骤
+                logger.info(f"Planner&ReAct流状态从{FlowStatus.UPDATING}变成{FlowStatus.EXECUTING}")
+                self.status = FlowStatus.EXECUTING
+            elif self.status == FlowStatus.SUMMARIZING:
+                # 25.所有子步骤执行完成
+                logger.info(f"Planner&ReAct流开始总结")
+                async for event in self.react.summarize():
+                    yield event
+
+                # 26.总结完毕，流即将结束
+                logger.info(f"Planner&ReAct流状态从{FlowStatus.SUMMARIZING}变成{FlowStatus.COMPLETED}")
+                self.status = FlowStatus.COMPLETED
+            elif self.status == FlowStatus.COMPLETED:
+                # 27.已结束，更新plan状态，并发送计划事件通知api已完成
+                self.plan.status = ExecutionStatus.COMPLETED
+                self.status = FlowStatus.IDLE
+                yield PlanEvent(status=ExecutionStatus.COMPLETED, plan=self.plan)
+                break
 
         # 任务已结束则返回结束事件
         yield DoneEvent()
