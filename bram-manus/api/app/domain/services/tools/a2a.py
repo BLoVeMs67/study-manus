@@ -140,7 +140,7 @@ class A2ATool(BaseTool):
         self._initialized: bool = False
         self.manager: Optional[A2AClientManager] = None
 
-    async def initialize(self, a2a_config: Optional[A2AClientManager] = None) -> None:
+    async def initialize(self, a2a_config: Optional[A2AConfig] = None) -> None:
         if not self._initialized:
             self.manager = A2AClientManager(a2a_config)
             await self.manager.initialize()
