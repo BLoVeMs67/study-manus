@@ -1,5 +1,7 @@
 import logging
+from typing import List, AsyncGenerator
 
+from fastapi import UploadFile
 from pydantic import TypeAdapter
 
 from app.domain.external.browser import Browser
@@ -10,7 +12,9 @@ from app.domain.external.sandbox import Sandbox
 from app.domain.external.search import SearchEngine
 from app.domain.external.task import TaskRunner, Task
 from app.domain.models.app_config import AgentConfig, MCPConfig, A2AConfig
-from app.domain.models.event import ErrorEvent, Event
+from app.domain.models.event import ErrorEvent, Event, MessageEvent, BaseEvent, ToolEvent
+from app.domain.models.file import File
+from app.domain.models.message import Message
 from app.domain.models.session import SessionStatus
 from app.domain.repositories.file_repository import FileRepository
 from app.domain.repositories.session_repository import SessionRepository
@@ -84,6 +88,109 @@ class AgentTaskRunner(TaskRunner):
         # 这是写的什么
         return Event
 
+    async def _sync_file_to_sandbox(self, file_id: str) -> File:
+        """根据文件id将文件同步到沙箱中"""
+        try:
+            # 1.调用文件存储下载文件信息
+            file_data, file = await self._file_storage.download_file(file_id)
+
+            filepath = f"/home/ubuntu/upload/{file.filename}"
+
+            tool_result = await self._sandbox.upload_file(
+                file_data=file_data,
+                filepath=filepath,
+                filename=file.filename,
+            )
+
+            if tool_result.success:
+                file.filepath = filepath
+                await self._file_repository.save(file)
+                return file
+
+        except Exception as e:
+            logger.exception(f"AgentTaskRunner同步文件[{file_id}]失败：{str(e)}")
+
+    async def _sync_message_attachments_to_sandbox(self, event: MessageEvent) -> None:
+        """将消息事件中的附件同步到沙箱中"""
+        # 附件列表
+        attachments: List[str] = []
+
+        try:
+            # 判断消息中是否存在附件
+            if event.attachments:
+                for attachment in event.attachments:
+                    # 根据同步文件的id将数据同步到沙箱中
+                    file = await self._sync_file_to_sandbox(attachment.id)
+
+                    if file:
+                        attachments.append(file)
+                        await self._session_repository.add_file(self._session_id, file)
+                event.attachments = attachments
+        except Exception as e:
+            logger.exception(f"AgentTaskRunner同步消息附件到沙箱失败：{str(e)}")
+
+    # 没懂
+    async def _sync_file_to_storage(self, filepath: str) -> File:
+        """将沙箱中指定的文件路径数据同步到存储桶中"""
+        try:
+            # 根据文件路径从会话中查找文件数据
+            file = await self._session_repository.get_file_by_path(filepath)
+
+            # 从沙箱下载文件
+            file_data = await self._sandbox.download_file(filepath)
+
+            if file:
+                await self._session_repository.remove_file(self._session_id, file.filepath)
+
+            filename = filepath.split("/")[-1]
+            upload_file = UploadFile(file=file_data, filename=filename)
+            # todo:upload_file.content_type类型需要确认是否可以不填写
+
+            file = await self._file_storage.upload_file(upload_file)
+            file.filepath = filepath
+
+            await self._session_repository.add_file(self._session_id, file)
+
+        except Exception as e:
+            logger.exception(f"AgentTaskRunner同步消息附件到文件存储桶失败：{str(e)}")
+
+
+    async def _sync_message_attachments_to_storage(self, event: MessageEvent) -> None:
+        """将消息事件的附件同步到文件存储桶中"""
+        attachments: List[File] = []
+
+        try:
+            if event.attachments:
+                for attachment in event.attachments:
+                    file = await self._sync_file_to_storage(attachment.filepath)
+
+                    if file:
+                        attachments.append(file)
+                        # 为什么没有这句
+                        # await self._session_repository.add_file(self._session_id, file)
+            event.attachments = attachments
+        except Exception as e:
+            logger.exception(f"AgentTaskRunner同步消息附件到存储桶失败：{str(e)}")
+
+
+    async def _run_flow(self, message: Message) -> AsyncGenerator[BaseEvent, None]:
+        """根据消息对象运行PlannerReActFlow"""
+        if not message.message:
+            logger.warning(f"AgentTaskRunner接收了一条空消息")
+            yield ErrorEvent(error="空消息错误")
+            return
+
+        async for event in self._flow.invoke(message):
+            # 判断是否tool，是则额外处理
+            if isinstance(event, ToolEvent):
+                # todo:工具事件额外处理
+                pass
+            elif isinstance(event, MessageEvent):
+                # 如果是消息事件则将AI消息事件中的附件同步到存储中
+                await self._sync_message_attachments_to_storage(event)
+
+            yield event
+
     async def invoke(self, task: Task) -> None:
         """根据传递的任务处理agent消息队列并运行agent流"""
         try:
@@ -98,6 +205,21 @@ class AgentTaskRunner(TaskRunner):
                 # 3.从输入流中获取数据
                 event = await self._pop_event(task)
                 message = ""
+
+                # 4.判断事件类型是否为消息，是则处理消息并将消息附件同步到沙箱
+                if isinstance(event, MessageEvent):
+                    message = event.message or ""
+                    await self._sync_message_attachments_to_sandbox(event)
+                    logger.info(f"AgentTaskRunner接收到新消息：{message[:50]}...")
+
+                # 消息事件转换成消息对象
+                message_obj = Message(
+                    message=message,
+                    attachments=[attachment.filepath for attachment in event.attachments],
+                )
+
+                async for event in self._run_flow(message_obj):
+                    pass
 
         except Exception as e:
             logger.exception(f"AgentTaskRunner运行出错：{str(e)}")
