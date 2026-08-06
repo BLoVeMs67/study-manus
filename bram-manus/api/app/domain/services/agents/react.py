@@ -43,7 +43,6 @@ class ReActAgent(BaseAgent):
                     if event.status == ToolEventStatus.CALLING:
                         yield MessageEvent(
                             role="assistant",
-                            # todo:message_ask_user工具未实现，暂定text
                             message=event.function_args.get("text", "")
                         )
                     elif event.status == ToolEventStatus.CALLED:
